@@ -1,0 +1,413 @@
+Terraform:
+
+
+Providers:
+   - Provider is a plugin, that helps terrform to understand where it has to created the infrastructure
+   - It act as medium to terraform , without provider it is not possible
+
+What if for other Providers:GO and search in terraform website, we get the information
+https://registry.terraform.io/browse/providers?tier=partner%2Ccommunity%2Cofficial
+
+They are three types of provider
+   * Offical Provider -> Hashi Corp Actively Maintaine like AWS , Azure , GCP , K8
+   * Partner Provider -> Like Orcale, Alibaba Cloud Hashi Copr they havent creat the code for Alibaba Cloud, Provider will activly maintaine the Particular Provider
+   * Commuinty Provider-> we can creat the enter provider configuration for ourself.
+
+Q) How to setup the infrastructure in Multiple-Region?
+Q) How to setup the infrasturcture in Multiple-Cloud? 
+
+
+1.Create- Multi - Region:
+************************
+We can make use of alias keyword to implement multi region infrastructure setup in terraform.
+
+provider "aws" {
+    alias = "ap-south-1"   # alias name we can give any name
+    region = "ap-south-1"    
+}
+
+provider "aws" {
+    alias = "us-east-2"  # alias name we can give any name
+    region = "us-east-2"
+}
+
+resource "aws_instance" "my_ec2_ohio" {
+    ami = "ami-0d406e26e5ad4de53"
+    instance_type = "t2.micro"
+    provider = aws.us-east-2
+}
+
+resource "aws_instance" "my_ec2_south" {
+    ami = "ami-067c21fb1979f0b27"
+    instance_type = "t2.micro"
+    provider = aws.ap-south-1
+}
+
+Note: By using the alias we can create the terraform infrasturture at multiple-Region.
+
+
+2.Setup terraform for multiple cloud:
+*************************************
+Create a providers.tf file in the root directory of your Terraform project.
+In the providers.tf file, define the AWS and Azure providers. 
+
+For example:
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+provider "azurerm" {
+  subscription_id = "your-azure-subscription-id"
+  client_id = "your-azure-client-id"
+  client_secret = "your-azure-client-secret"
+  tenant_id = "your-azure-tenant-id"
+}
+
+resource "aws_instance" "example" {
+  ami = "ami-0123456789abcdef0"
+  instance_type = "t2.micro"
+}
+
+resource "azurerm_virtual_machine" "example" {
+  name = "example-vm"
+  location = "eastus"
+  size = "Standard_A1"
+}
+************************************************************************************************
+
+Variables:
+
+-> Advantage of using Variables:
+      It is used to Paramaterzied , We can use the param to pass the values to our project
+
+Terraform typically two types of variables:
+     - Input Variables
+          #if we want to pass the information to terraform, then it is called as input variables.
+            Ex: if you want to Parameterzied like ami , instance type, then we can pass the value use input variables.
+     - Output Variables
+          #If we want to print the particular value in the ouput
+            Ex: - After Create the ec2 instance we dont want go to the aws consule to take the Public IP.
+                - In the Output Variable,we can tell terraform that print the Public IP.
+                - Once Terraform Creation of resources , as output it will public IP Back.
+
+
+
+
+
+
+
+
+Note: By Using variable it is not use by just one particula team .we can reuse the particular terrform project with different team.
+
+
+
+
+
+*********
+Modules:
+********
+Disadvanatage on Monolythic:
+- Ages
+- owner ship
+- Maintaince
+- Testing
+
+
+
+
+
+
+
+
+
+
+Setups to follow below
+
+create three file main.tf , var.tf , terrafrom.tfvars
+
+# vi creat main.tf
+# In real time Orginization using variable value at tfvars
+
+provider "aws" {
+    region = "us-east-2"
+}
+
+resource "aws_instance" "example" {
+    ami = var.ami
+    instance_type = var.instance_type
+}
+
+#vi var.tf
+variable "ami" {
+    description = "value of the ami" 
+}
+
+variable "instance_type" {
+    description = "value for the instance"
+}
+
+# vi terraform.tfvars
+ami = "ami-0d406e26e5ad4de53"
+instance_type = "t2.micro"
+
+Execute the scripit
+$ terraform init
+$ terraform plan
+$ terrafrom apply --auto-approve
+
+Note : Once check the output do it destroy and try it add the output.tf file 
+$ terraform destroy --auto-approve
+
+
+# By using variable value in terrafrom tf. we can easily maintain the value as securly.
+
+#vi output.tf
+output "public_ip_address" {
+    value = aws_instance.example.public_ip   
+}
+$ terraform apply --auto-approve
+
+****************
+create a Module:
+****************
+
+-> create a folder like 
+# mkdir /module/ec2_instance
+
+then copy the files main.tf var.tf output.tf to /module/ec2_instance
+
+Note: Do not copy the terraform.tfvars which is not neccessary.People who needs to create the infrastructure they will pass the value for the resource.
+
+then we can create the main.tf at any folder
+# vi main.tf
+
+ provider "aws" {
+    region = "us-east-2"
+}
+
+module "ec2-instance" {
+    source = "/root/module/ec2_instance"
+    ami = "ami-0d406e26e5ad4de53"
+    instance_type = "t2.micro" 
+}
+
+
+Why we need a modularity?
+  ->  if we create the 100 number of resources in single main.tf 
+  ->  In such case we have to modulraises
+
+https://github.com/iam-veeramalla/terraform-zero-to-hero/blob/main/Day-3/modules.md 
+
+***********************************************************Pending******************************************
+
+**********************************************************************************************************************
+Day-4
+*********************
+Terraform state file:
+**********************
+Advantage: 
+  1.State file is the heart of the terraform,Why becuase using statefile terraform will record or it will store the information that which are created.
+  2. If terraform doesnt have state file. if your give any modification for exisiting resoucre like instance ,s3 .Terraform will be create a new instance. it wont be modifiy the existing instance. if it is not maintain the state file.
+  3. Terraform always compare the terrafrom main.tf script and state file when we give any update.
+  4. Even if destroy the resoruce it will compare the state file only.
+  5. State file is useful , it will recored the infrasture that it has previously created , it will help if we want to update the exisiting infrastructure or even if you want to destroy the infrastructure. Using Statefile only terraform will come to know, what action it has to perform.
+
+Disadvantage of Terraform state file/drawbacks:
+   1.Any Action that we perform with terraform , wheather you want to create Ec2 instance , s3 bucket , EKS, any policy ,
+it will store into the state file.
+   2. What if we want something maintain sensitive.dont want to store in the state file ,by default terraform doesnt do it.
+   3. what terraform does, it will recored state file anything which can be sensitive information or password.....
+  for an Example:
+      If handle terraform infrastrcture and maintain the terraform with in the single person no problem. State file will store in the on his laptop only.Because personal laptop no badies will access it. 
+      But in real world 
+  Problem-1
+     -> we will be team of devops Eng , so any one can miss use the state file.
+     -> we write the terraform project for bunch developer as well.
+     -> Some Scenario we write it terraform script and sent it to developers . In this case developer will know what is there in infrastructure by using terraform state file. 
+   Problem-2
+     -> Some cases multiple devops eng work with one project , so that they maintain the terraform script in git hub repositories.
+     -> We will store the entire terraform logic in vcs along with that state file also upload in git hub. Inthat case anyone will see the statefile on the git hub.
+    Problem-3
+      -> Multiple Devops eng configure the code in git repo
+      -> In this case every developer should push changes into git repo after changing the code, even they have to push the updated state file also for changes.
+      -> Otherwise it would be happend any mess up insfrastrure configuration  
+
+How to fix the problem?
+     -> Terraform has the connecpt called Remote BackEnd
+     -> by using Remote backend concept we can store the state file into s3 Bucket
+   
+We are deveops eng team five to six memebers . We have a git hub Repo. We Mainatain the s3 State file in s3 bucket instead of maintaining the state file in local meachine. 
+
+
+# vi main.tf
+
+provider "aws" {
+    region = "us-east-2"
+}
+
+resource "aws_instance" "arun" {
+    instance_type = "t2.micro"
+    ami = "ami-0d406e26e5ad4de53"
+}
+
+resource "aws_dynamodb_table" "terraform" {
+    name = "terraform-lock-1"
+    billing_mode = "PAY_PER_REQUEST"
+    hash_key = "LockID"
+
+    attribute {
+        name = "LockID"
+        type = "S"
+    }
+
+}
+
+
+resource "aws_s3_bucket" "s3_bucket" {
+    bucket = "arun-s3-demo-backend"   
+}
+
+resource "aws_s3_bucket_versioning" "arun-s3-version" {
+    bucket = aws_s3_bucket.s3_bucket.id
+    versioning_configuration {
+      status = "Enabled"
+    }
+}
+
+
+vi Backend.tf
+
+terraform{
+    backend "s3" {
+        bucket = "arun-s3-demo-backend"
+        region = "us-east-2"
+        key = "arun/terraform.tfstate"
+        dynamodb_table = "terraform-lock-1"
+    }
+}
+
+Note: we can create s3 bucket and dynamoDB via consul or terraform 
+**************************
+State Locking Mechansim:
+**************************
+  if multiple devops eng working for a single project .Any time two devops eng will execute the terraform apply at same time for the same resources. Inthis case conflict will happend for script level and resources level.
+   To avoid this sceniro will lock the state file . when we execute the terraform apply. 
+   In this case at time one person only able to create the resource. Other person should be wait if any execution happend.
+   we can implement the Lock machinesm in Dynamo DB Service.
+
+*******************************************************************************************************************
+
+Provisioner:
+
+  -> using Provisioner we can execute + Implement during the creation
+  -> for an exampple : At the time of Ec2 instance creation we can do
+                              * copy the file
+                              * Execute some commands also.
+  As Devops Eng when we are using terraform:
+     
+
+Remote.Exec ->  if you want to execute the command will creating the instance
+Local.Exec -> if you want to print anything of the console
+file provisioner -> it is used to copy the file will creating the instance
+
+***************************************************************************************************************************
+Terraform Workspaces:
+
+We are using module for instead of writing the terrafome scirpit for evey single project. 
+we can write module and re-use same moudle for every project.
+
+
+-> workspaces:
+  - Every Workspaces will have seprate state files.
+  - it will solve the problem in single state file
+  - It will create statefile for each environment
+  - There will be folder , Inside that there will multi folder avaliable based on the environment and workspace
+  - we will have folder for each environment .
+  - we will write terraform project only once , but statfiles are created on the different folder.
+  - state files are create based on environment folder , same infrstraucture also create different environment
+
+terraform workspace list
+terraform workspace new
+terraform workspace select <workspacename>
+
+********************************************************************************************************************- ******************
+Terraform commands
+******************
+
+$terraform init
+$terraform apply
+$terraform plan
+$terraform refersh
+$terraform state list <to list resources>
+$terraform state show <particular resources>
+$terraform import
+$terraform apply --var-file="filename"
+$terraform workspace list
+$terraform workspace new
+$terraform workspace select
+$terraform workspace delete
+$terraform force-unlock <LockID>
+$terraform taint -> it is used to recreat particuluar resource
+$terraform untaint -> it is used to disable the tainted resoucrces.
+$terraform destroy -target=<particular resource id> , it will delete the particular resource
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+ 
+ 
+
+
+
+
+
+
+       
+      
+      
+      
+      
+
+   
+
+
+
+ 
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
+
+
+
+
+ 
+   

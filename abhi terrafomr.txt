@@ -1,0 +1,221 @@
+Terraform:
+
+
+Providers:
+   - Provider is a plugin, that helps terrform to understand where it has to created the infrastructure
+   - It act as medium to terraform , without provider it is not possible
+
+What if for other Providers:GO and search in terraform website, we get the information
+https://registry.terraform.io/browse/providers?tier=partner%2Ccommunity%2Cofficial
+
+They are three types of provider
+   * Offical Provider -> Hashi Corp Actively Maintaine like AWS , Azure , GCP , K8
+   * Partner Provider -> Like Orcale, Alibaba Cloud Hashi Copr they havent creat the code for Alibaba Cloud, Provider will activly maintaine the Particular Provider
+   * Commuinty Provider-> we can creat the enter provider configuration for ourself.
+
+Q) How to setup the infrastructure in Multiple-Region?
+Q) How to setup the infrasturcture in Multiple-Cloud? 
+
+
+1.Create- Multi - Region:
+************************
+We can make use of alias keyword to implement multi region infrastructure setup in terraform.
+
+provider "aws" {
+    alias = "ap-south-1"   # alias name we can give any name
+    region = "ap-south-1"    
+}
+
+provider "aws" {
+    alias = "us-east-2"  # alias name we can give any name
+    region = "us-east-2"
+}
+
+resource "aws_instance" "my_ec2_ohio" {
+    ami = "ami-0d406e26e5ad4de53"
+    instance_type = "t2.micro"
+    provider = aws.us-east-2
+}
+
+resource "aws_instance" "my_ec2_south" {
+    ami = "ami-067c21fb1979f0b27"
+    instance_type = "t2.micro"
+    provider = aws.ap-south-1
+}
+
+Note: By using the alias we can create the terraform infrasturture at multiple-Region.
+
+
+2.Setup terraform for multiple cloud:
+*************************************
+Create a providers.tf file in the root directory of your Terraform project.
+In the providers.tf file, define the AWS and Azure providers. 
+
+For example:
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+provider "azurerm" {
+  subscription_id = "your-azure-subscription-id"
+  client_id = "your-azure-client-id"
+  client_secret = "your-azure-client-secret"
+  tenant_id = "your-azure-tenant-id"
+}
+
+resource "aws_instance" "example" {
+  ami = "ami-0123456789abcdef0"
+  instance_type = "t2.micro"
+}
+
+resource "azurerm_virtual_machine" "example" {
+  name = "example-vm"
+  location = "eastus"
+  size = "Standard_A1"
+}
+************************************************************************************************
+
+Variables:
+
+-> Advantage of using Variables:
+      It is used to Paramaterzied , We can use the param to pass the values to our project
+
+Terraform typically two types of variables:
+     - Input Variables
+          #if we want to pass the information to terraform, then it is called as input variables.
+            Ex: if you want to Parameterzied like ami , instance type, then we can pass the value use input variables.
+     - Output Variables
+          #If we want to print the particular value in the ouput
+            Ex: - After Create the ec2 instance we dont want go to the aws consule to take the Public IP.
+                - In the Output Variable,we can tell terraform that print the Public IP.
+                - Once Terraform Creation of resources , as output it will public IP Back.
+
+
+
+
+
+
+
+
+Note: By Using variable it is not use by just one particula team .we can reuse the particular terrform project with different team.
+
+
+
+
+
+*********
+Modules:
+********
+Disadvanatage on Monolythic:
+- Ages
+- owner ship
+- Maintaince
+- Testing
+
+
+
+
+
+
+
+
+
+
+Setups to follow below
+
+create three file main.tf , var.tf , terrafrom.tfvars
+
+# vi creat main.tf
+# In real time Orginization using variable value at tfvars
+
+provider "aws" {
+    region = "us-east-2"
+}
+
+resource "aws_instance" "example" {
+    ami = var.ami
+    instance_type = var.instance_type
+}
+
+#vi var.tf
+variable "ami" {
+    description = "value of the ami" 
+}
+
+variable "instance_type" {
+    description = "value for the instance"
+}
+
+# vi terraform.tfvars
+ami = "ami-0d406e26e5ad4de53"
+instance_type = "t2.micro"
+
+Execute the scripit
+$ terraform init
+$ terraform plan
+$ terrafrom apply --auto-approve
+
+Note : Once check the output do it destroy and try it add the output.tf file 
+$ terraform destroy --auto-approve
+
+
+# By using variable value in terrafrom tf. we can easily maintain the value as securly.
+
+#vi output.tf
+output "public_ip_address" {
+    value = aws_instance.example.public_ip   
+}
+$ terraform apply --auto-approve
+
+****************
+create a Module:
+****************
+
+-> create a folder like 
+# mkdir /module/ec2_instance
+
+then copy the files main.tf var.tf output.tf to /module/ec2_instance
+
+Note: Do not copy the terraform.tfvars which is not neccessary.People who needs to create the infrastructure they will pass the value for the resource.
+
+then we can create the main.tf at any folder
+# vi main.tf
+
+ provider "aws" {
+    region = "us-east-2"
+}
+
+module "ec2-instance" {
+    source = "/root/module/ec2_instance"
+    ami = "ami-0d406e26e5ad4de53"
+    instance_type = "t2.micro" 
+}
+
+
+Why we need a modularity?
+  ->  if we create the 100 number of resources in single main.tf 
+  ->  In such case we have to modulraises
+
+https://github.com/iam-veeramalla/terraform-zero-to-hero/blob/main/Day-3/modules.md 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
+
+
+
+
+ 
+   

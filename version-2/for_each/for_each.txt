@@ -1,0 +1,99 @@
+For each Meta Argument:
+**********************
+- By defult resource block creat single object
+- some times we want to create multiple object of same time
+- Example i want to create Multiple subnet object using the loop
+- In this case for_each is used for that
+
+--------------Toset----------------------
+# Provider.tf
+
+#terraform block
+terraform{
+    required_version = "~> 1.5.6"
+    required_providers{
+        aws = {
+            source = "hashicorp/aws"
+            version = "5.6.2"
+        }
+    }
+}
+
+provider "aws" {
+    region = var.region
+}
+
+# main.tf
+
+resource "aws_vpc" "my_vpc" {
+    for_each = toset(var.vpcs)
+    cidr_block = each.value
+    
+}
+
+# variable.tf
+
+variable "vpcs" {
+    default = [
+        "10.0.0.0/16",
+        "10.1.0.0/16"
+    ]
+}
+
+variable "region" {
+    type = string
+    default = "us-east-2"
+}
+
+
+
+---------------------tomap--------------------
+
+
+#main.tf
+
+terraform{
+    required_version = "~> 1.5.6"
+    required_providers{
+        aws = {
+            source = "hashicorp/aws"
+            version = "5.6.2"
+        }
+    }
+}
+
+provider "aws" {
+    region = var.region
+}
+
+var.tf
+
+variable "vpcs"{
+    default = {
+       app_one = "10.0.0.0/16",
+       app_two = "10.1.0.0/16"
+    }
+}
+
+variable "region" {
+    type = string
+    default = "us-east-2"
+}
+
+#main.tf
+
+resource "aws_vpc" "vpc1" {
+    for_each = tomap(var.vpcs)
+    cidr_block = each.value
+    tags = {
+        "Name" = each.key
+    }
+  
+}
+
+
+
+
+
+
+ 

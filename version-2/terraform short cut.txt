@@ -1,0 +1,463 @@
+1.Multi Region Provider
+-> alias
+-> provider = aws.(aliasname)
+
+2.Terrafrom Minor and Major Change. 
+-> Minor change -> adding tags (it wont destroy the resource)
+-> Major Change -> change the CIDR block (It will destroy the existing resource and create the new resoucres)
+Note: Force Replacment
+
+3. count -> to create multiple instance
+   how to add the index value in tag
+   tags = {
+     "Name" = "web-${count.index}"
+
+4.for_each: want to create the multiple bucket with different name we can user for_each / Map
+
+  resource "aws_s3_bucket" "s3_bucket" {
+  
+  for_each = {
+    dev = "dev-bucket"
+    qa = "qa-bucket"
+  }
+  
+  bucket = "${each.key}-${each.value}"
+     acl = "private"
+     tags = {
+      Name = each.key
+     }
+
+5.for_each (list)
+    Creating Multiple IAM User
+resource "aws_iam_user" "create_user" {
+ for_each = toset(["run","kumar","Raju","bai"])
+ name = each.key
+}
+
+6.Terraform Life cycle:
+  - Create before destroy
+  - Prevent Destroy
+  - Igonre changes
+1.Create before destroy : 
+    1. Normal behivaour of terraform if modify the resource first it will destroy and create the modified resources
+    2. But if we give create_before_lifecycle=true -> first it will creat the resouce and it will destroy the existing resourc
+
+   lifecycle{
+    creat_before_destroy = true
+   }
+2.Prevent destroy:
+   1.it will prevent the destroy
+  lifecycle{
+   prevent_destroy = tru
+  }
+3.Ignore Changes
+   
+1.Terraform refersh -> it will update the from infra details(consule) to State file.
+2.Terraform always maintain the infra which we are update in .tf file
+
+Note: In this case how to overcome this behaviour
+
+lifecycle {
+  ignore_changes = [tag]
+}
+
+null which means terraform notify going to remove.
+
+Note: [] square bracket it will donate list of multiple elements.
+
+
+7.depends_on
+   it is used to depending one resource to anthor resoucrce
+
+IAM user
+resource "aws_iam_user" "my.iam"{
+  for_each = toset(["arun","kumar","raju"])
+  name = each.key
+}
+depends_on = [aws_vpc.my_vpc]
+
+create VPC
+resouce "aws_vpc" "myvpc" {
+  cidr_block = "10.0.0.0/16"
+  tags = {
+     "Name" = "arun"
+ }
+}
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+for command line directly --var="resoucername=5"
+
+CLI -> highest priority   
+terraform.tfvars -> second priority
+environment variable -> third priority
+defualt value -> lowest priority
+
+
+we can give multiple terraform.tfvars with different name
+dev.tfvars
+qa.tfvars
+
+Note we have to give the CLI command => -var-file="filename"
+
+
+another name we can give def.out.tfvars -> we dont want to give the CLI command if using "auto" 
+
+
+export enivornment variable TF_VAR_ec2_instance
+
+
+********************************************************************
+
+using variable of list(string)
+-----------------------------
+
+variable"ec2_instance" {
+  description = instace type of ec2
+  type = list(string)
+  default = (["t2.micro","t2.medium"])
+}
+
+
+resource "aws_instance" "my_ec2" {
+   ami = "amiid"
+   instance_type = var.ec2_instance[2]
+}
+
+****************************************************************************
+using variable of Map(String)
+-----------------------------
+
+variable "ec2_instance" {
+   type = map(string)
+   default = {
+             "dev" = "t2.micro"
+             "QA" = "t2.medium"
+             "prod" = "t3.medium"
+            }
+}
+             
+
+resource "aws_instance" "My_ec2" {
+    ami = "amiid"
+    instance_type = var.instance["qa"]
+   }
+
+Note: to assign the key and value
+
+***********************************************************************************
+
+variable with secrets:
+---------------------
+
+Note : we will load Username and Password in Environmental Varialbe.
+
+resource "aws_db_instance" "db1" {
+    allocated_storage = 5
+    instance_class = "db.t2.micro"
+     engine = "mysql"
+     name = arundb"
+     username = var.username
+     password = var.password
+     skip_final_snapshot= true
+     }
+
+variable "username" {
+   description = "dbusername"
+    type = string
+    sensitive = true
+    }
+
+variable "password {
+   description = "dbpassword"
+    type = string
+    sensitive = true
+}
+
+Note: we have to set up username and password value in envinvorental varialbe
+
+export tf_vars_username = arun
+
+when we add sensitive paramater in Variable file -> value is not refelected in state file (it will maintain the value in a secure way)
+
+***************************************************************************************************************************** 
+
+Output:
+------
+
+It will give the output of the value after creating the instance.
+
+resoucre "aws_instance" "myec2" {
+     ami = "amiid"
+     instance_type = "t2.micro" 
+}
+
+create the file as output.tf
+$ vi output.tf
+
+output "publicp" {
+   desciption = "qa_public_IP"
+   value = aws_instance.myec2.public_ip
+}
+ 
+*****************************************************************************************************************************Terraform data Source:
+----------------------
+
+AMI ID Frequently changed, so if you want to fetch the updated ami ID while creating infra without manual process.
+we can use data Source.
+By using datasource we can fetch the data from amazon dynamically
+
+SyntaX:
+data "type-of-data" "your-friendly-name" {
+}
+
+Example:
+data "aws_ami" "arun" {
+   most_recent = true
+   owners      = ["amazon"]
+   filter {
+      name = "name"
+      values = ["al2023-ami-2023.2.20231002.0-kernel-6.1-x86_64*"]  #by future any ami number changed it will update here.
+      }
+output "ami_id" {
+  value = data.aws_ami.arun.id
+
+Note: if you want to know the data_source resource , go and search google like "terraform data source ami"
+
+***********************************************************************************************************************     
+File Funtion:
+-------------
+
+if we want to run the shell script inside the userdata. for this case we can use the file funtion
+
+Setup like below :
+
+create executable file
+
+# vi apache.sh
+Inside file we can add the scripts as your requirement
+
+resource "aws_instance" "myec2" {
+   ami  = "amiid"
+   instance_type = "t2.micro
+   user_data = file("apache.sh")
+}
+***************************************************************************************************************************
+Terraform import:
+-----------------
+
+If resource create outside the terraform, which means resource not created using terraform. if we want to bring the control to terraform .
+
+setup-1 :
+  1.create the vpc mannually with cidr block and tag name
+
+setup-2
+   1.create the main.tf 
+
+provider "aws" {
+    region = "us-east-2"
+}
+
+resource "aws_vpc" "myvpc" {
+    cidr_block = "10.0.0.0/16"
+    tags = {
+        Name = "vpc"
+    }
+  
+}
+Note: make sure that we have to give in the terraform script of vpc cidr block and tags details which are created in consule.
+$ terraform init
+$ terraform import resourcname.resourcelogicname resource id
+ex: terrform aws_vpc.myvpc.vpc-0420c7de93edf1b21
+
+It will import the all details and create the state file also.
+
+Then do some change in terraform and execute the terraform apply --auto-approve
+we will get changes in consule.
+_____________________________________________________________________________________________________________________________
+
+State file store in S3 bucket and lock state file.
+-------------------------------------------------
+- create bucket with version
+- Create Dyanmo table 
+    -> name  ->Partition key (LockID)
+we have to create the backend block inside the provider block.
+# Adding Backend as for Remote state Storage
+    backend "s3" {
+      bucket = "s3terraform2020" 
+      key = "terraform.tfstate"
+      region = "us-east-2"
+      dynamodb_table = "terra-table"
+   }
+
+}
+Terrafor
+Terraform Support Different Remote state , out of that one is s3
+Remote Locking:
+---------
+ - It is used to avoid the multiple state files changes at a single time. When we apply the lock file.we able to run the scripit at a one time only.(it is mostly used for multiple developers working in a single project).
+ - This ensures that only one person can make changes to the infrastructure at a given time
+__________________________________________________________________________________________________________________________
+$ terraform init
+$ terraform validate
+$ terraform fmt:
+   --------------
+    It is used to allign the terraform script.
+$ terraform Validate:
+   ------------------
+     It is used to check the symmetical error in terraform script.
+$ terraform refresh:
+   ------------------
+    Any changes or any update which are made in the infrastructure, to update in the state file. we will be using the terraform refresh command. It will go and read infrastructer.
+$ terraform show:
+   ---------------
+     It is used to know about all resource state file information.
+$ terraform state 
+  ----------------
+     - terraform state list -> It is used to list the resource details.
+     - terraform state show <resource name> -> it is used to know about the particular resource details.
+$ terraform force-unlock <LockID>
+  -------------------------------
+      - It is used to forcefully unlock the ID.
+$ terraform taint & terraform untaint:
+  ---------------   -----------------
+      when u want to recreate the particular resource we can use command terraform taint
+ step:
+     $ terraform state list
+     $ terraform taint <resource details> , Ex: terraform taint aws_security_group.vpc-web
+     $ terraform plan --> will see the details.
+     $ terraform untaint -> it is used to untaint the tainted resources.  
+$Using Target when we applying and destroy the resources:
+ --------------------------------------------------------
+      If we want to create and destroy the particular resources we can use target command.
+step:
+     $ terraform state list
+     $ terraform plan -target=<resource details> , EX: terraform plan -target=aws_security_group.vpc-web
+_________________________________________________________________________________________________________________________
+aws sts get-caller-identity
+Terraform workspace:
+    Managing Mutliple Environments with using workspace
+    Every Workspace will have a seprate state files
+
+# list the workspace
+$ terraform workspace list 
+# create the workspace
+$ terraform workspace new <name>
+# To check the current workspace
+$ terraform workspace show
+# To switch the workspace
+$ terraform workspace select <name>
+
+for if conditon "?:"
+10>5 hi:hello
+  
+
+
+      
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

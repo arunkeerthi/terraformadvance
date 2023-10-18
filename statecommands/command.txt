@@ -1,0 +1,21 @@
+$ terraform show
+  It is used to show details about remote backend state file 
+$ terrafrom state list
+  It is used to show resource details in a oneline.  
+$ terrafrom state show <resour details>
+  It is used to show the full details at particular resource
+$ terraform force-unlock LockID   | Ex:terraform force-unlock <dynamod db lock id>
+  if the state is lock for some issue , in this case we can use this command.
+$ terraform taint
+  By using this command we can recreate the particular resource, it will delete and re-create the particular resource.
+  terraform state list
+  terraform tain <resource id>
+$ terraform untaint 
+  if you want to untaint , we can use terraform untaint
+  terraform untaint <resourc id>
+$ terraform -target | Ex:terraform destroy -target=aws_security_group.vpc-web-2
+  if you want to destroy or apply the particular resoure , we can use this command
+Terraform workspace:
+  Every Workspace will have a sperate state file  
+  if condition in terraform ?:
+  

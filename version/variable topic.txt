@@ -1,0 +1,9 @@
+what is terraform variable
+how to declare terrraform variable?
+Types of terraform Variables - string , number , bool, list, map
+Demo
+
+what is variable.tf?
+what is terraform.tf vars?
+handle multiple terraform.vars?
+How to set variable value using command line var
